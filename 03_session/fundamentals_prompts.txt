@@ -1,0 +1,33 @@
+You are a data analyst AI. You are provided with a CSV file containing a single set of fundamental metrics for multiple entities.
+Please:
+* Examine the data for patterns, trends, or notable differences among the entities.
+* Identify which entities appear strongest or weakest based on the available metrics.
+* Highlight any outliers or unusual values.
+* Compare the entities across all metrics and summarize key insights.
+* Present your findings in a clear, structured format with bullet points and concise explanations.
+* Base your analysis solely on the provided data, without using any external information.
+
+Based on your previous analysis of the provided fundamental data for multiple entities, please construct a hypothetical portfolio using long and short positions.
+Specifically:
+* Select a subset of entities to go long (buy) and a subset to go short (sell), using your earlier insights and comparisons.
+* Clearly explain the criteria and reasoning for each selection (e.g., relative strength, weakness, or outlier status in key metrics).
+* Specify the recommended weight or proportion for each long and short position, ensuring the portfolio is balanced.
+* Summarize the expected rationale or potential advantage of this portfolio construction, based solely on the fundamental data.
+* Present your recommendations in a clear, structured format (such as a table or bullet points).
+* Do not use any price or market data, and do not reference external information—base your portfolio solely on the provided fundamental metrics and your prior analysis.
+
+***
+
+Context window problem with Clause/DeepSeek
+
+https://www.perplexity.ai/search/why-can-a-simple-csv-file-with-913XA4UITvi1wDhJxdb6sA#0
+
+***
+
+All price and fundamentals data from https://eodhd.com/r/?ref=X8R79ISB. 
+
+***
+
+To run the TypeScript (.tsx) app, you need to install additional tools/packages. See:
+
+https://www.perplexity.ai/search/what-is-a-tsx-file-and-how-do-0B8MYmFSRzyfMKZARntqGg
