@@ -1,0 +1,8 @@
+Based on their most recent 10-Q filings (if possible, access them directly on sec.gov), derive the major financial/performance metrics for the following companies:
+
+AAPL,MSFT,AMZN,NFLX,META,GOOG,INTC,AMD,NVDA,GE,GS,BAC,JPM,MS
+
+
+For the following companies, research their current position, business strategy and product offerings with regard to AI adoption and integration. Create a ranking for both the tech companies and the financial institutions with regard to their AI competitive position.
+
+AAPL,MSFT,AMZN,NFLX,META,GOOG,INTC,AMD,NVDA,GE,GS,BAC,JPM,MS
