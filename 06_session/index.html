@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merton Jump Diffusion Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #007BFF;
+      --primary-dark: #0056b3;
+      --background: #f8f9fa;
+      --text: #343a40;
+      --light: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: var(--background); color: var(--text); }
+    .container { max-width: 900px; margin: 2rem auto; padding: 1rem; background: var(--light); border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 1rem; color: var(--primary); }
+    .controls { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .control { display: flex; flex-direction: column; }
+    .control label { margin-bottom: 0.25rem; font-size: 0.9rem; }
+    .control input { padding: 0.5rem; border: 1px solid var(--primary); border-radius: 4px; }
+    button { background: var(--primary); color: var(--light); border: none; padding: 0.75rem 1.5rem; border-radius: 4px; font-size: 1rem; cursor: pointer; transition: background 0.2s; grid-column: span 2; justify-self: start; }
+    button:hover { background: var(--primary-dark); }
+    canvas { background: var(--light); border: 1px solid #ddd; border-radius: 4px; }
+    .results { margin-top: 1rem; font-size: 1.1rem; }
+    .results p { margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Merton Jump Diffusion Simulator</h1>
+    <div class="controls">
+      <div class="control"><label for="s0">Initial Price S₀</label><input type="number" id="s0" value="100" step="any"></div>
+      <div class="control"><label for="mu">Drift μ</label><input type="number" id="mu" value="0.1" step="any"></div>
+      <div class="control"><label for="sigma">Volatility σ</label><input type="number" id="sigma" value="0.2" step="any"></div>
+      <div class="control"><label for="lambda">Jump Intensity λ</label><input type="number" id="lambda" value="0.5" step="any"></div>
+      <div class="control"><label for="muJ">Jump Mean μⱼ</label><input type="number" id="muJ" value="0" step="any"></div>
+      <div class="control"><label for="sigmaJ">Jump Vol σⱼ</label><input type="number" id="sigmaJ" value="0.1" step="any"></div>
+      <div class="control"><label for="T">Time Horizon T (years)</label><input type="number" id="T" value="1" step="any"></div>
+      <div class="control"><label for="steps">Steps</label><input type="number" id="steps" value="100" step="1"></div>
+      <div class="control"><label for="nSim">Simulated Paths</label><input type="number" id="nSim" value="10000" step="1" min="1"></div>
+      <div class="control"><label for="nDisp">Displayed Paths</label><input type="number" id="nDisp" value="10" step="1" min="1"></div>
+      <div class="control"><label for="K">Strike Price K</label><input type="number" id="K" value="100" step="any"></div>
+      <div class="control"><label for="r">Risk-free Rate r</label><input type="number" id="r" value="0.05" step="any"></div>
+      <button id="simulate">Simulate</button>
+    </div>
+    <canvas id="chart" width="800" height="400"></canvas>
+    <div class="results">
+      <p>Call Price: <strong id="callPrice">-</strong></p>
+      <p>Put Price: <strong id="putPrice">-</strong></p>
+    </div>
+  </div>
+  <script>
+    // chart instance holder (avoid id/name conflict with canvas element)
+    let chartInstance = null;
+    function randn_bm() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+    function samplePoisson(lambdaDt) {
+      const L = Math.exp(-lambdaDt);
+      let k = 0;
+      let p = 1;
+      while (p > L) {
+        p *= Math.random();
+        k += 1;
+      }
+      return k - 1;
+    }
+    function simulateMerton({s0, mu, sigma, lambda, muJ, sigmaJ, T, steps, paths}) {
+      const dt = T / steps;
+      const kappa = Math.exp(muJ + 0.5 * sigmaJ * sigmaJ) - 1;
+      const result = Array.from({ length: paths }, () => Array(steps + 1).fill(0));
+      for (let p = 0; p < paths; p++) {
+        let S = s0;
+        result[p][0] = S;
+        for (let i = 1; i <= steps; i++) {
+          const Z = randn_bm();
+          const drift = (mu - lambda * kappa - 0.5 * sigma * sigma) * dt;
+          const diffusion = sigma * Math.sqrt(dt) * Z;
+          const Nj = samplePoisson(lambda * dt);
+          let jumpSum = 0;
+          for (let j = 0; j < Nj; j++) {
+            jumpSum += muJ + sigmaJ * randn_bm();
+          }
+          const jump = Math.exp(jumpSum);
+          S = S * Math.exp(drift + diffusion) * jump;
+          result[p][i] = S;
+        }
+      }
+      return result;
+    }
+    document.getElementById('simulate').addEventListener('click', () => {
+      const s0 = parseFloat(document.getElementById('s0').value);
+      const mu = parseFloat(document.getElementById('mu').value);
+      const sigma = parseFloat(document.getElementById('sigma').value);
+      const lambda = parseFloat(document.getElementById('lambda').value);
+      const muJ = parseFloat(document.getElementById('muJ').value);
+      const sigmaJ = parseFloat(document.getElementById('sigmaJ').value);
+      const T = parseFloat(document.getElementById('T').value);
+      const steps = parseInt(document.getElementById('steps').value, 10);
+      const nSim = parseInt(document.getElementById('nSim').value, 10);
+      const nDisp = parseInt(document.getElementById('nDisp').value, 10);
+      const K = parseFloat(document.getElementById('K').value);
+      const r = parseFloat(document.getElementById('r').value);
+      const data = simulateMerton({ s0, mu, sigma, lambda, muJ, sigmaJ, T, steps, paths: nSim });
+      const labels = Array.from({ length: steps + 1 }, (_, i) => (i * (T / steps)).toFixed(2));
+      // Select only first nDisp paths for display
+      const displayCount = Math.min(nDisp, data.length);
+      const datasets = data.slice(0, displayCount).map((path, i) => ({
+        label: 'Path ' + (i + 1),
+        data: path,
+        borderColor: 'rgba(54, 162, 235,' + (0.3 + 0.7 * i / displayCount) + ')',
+        fill: false,
+        pointRadius: 0,
+        borderWidth: 1
+      }));
+      if (chartInstance) chartInstance.destroy();
+      const ctx = document.getElementById('chart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          plugins: { legend: { display: false } },
+          responsive: true,
+          scales: {
+            x: { display: true, title: { display: true, text: 'Time' } },
+            y: { display: true, title: { display: true, text: 'Asset Price' } }
+          }
+        }
+      });
+      // Monte Carlo option valuation at maturity using all simulated paths
+      const ST = data.map(path => path[steps]);
+      const callPayoffs = ST.map(S => Math.max(S - K, 0));
+      const putPayoffs = ST.map(S => Math.max(K - S, 0));
+      const avgCall = callPayoffs.reduce((a, b) => a + b, 0) / nSim;
+      const avgPut = putPayoffs.reduce((a, b) => a + b, 0) / nSim;
+      const disc = Math.exp(-r * T);
+      const callPrice = disc * avgCall;
+      const putPrice = disc * avgPut;
+      document.getElementById('callPrice').textContent = callPrice.toFixed(4);
+      document.getElementById('putPrice').textContent = putPrice.toFixed(4);
+    });
+  </script>
+</body>
+</html>
