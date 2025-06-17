@@ -1,0 +1,11 @@
+In order to use the app dataviz.html execute the following in this folder:
+
+    python -m http.server 8000
+
+Then access the dataviz.html app in the browser via:
+
+    http://localhost:8000/dataviz.html
+
+***
+
+dataviz_ref.html relies on a remote CSV file which might lead to errors locally.

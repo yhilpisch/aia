@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Financial Time Series Data</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Luxon & Chart.js adapter for time scale -->
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+  <!-- Papa Parse for CSV parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .header {
+      padding: 2rem 0;
+      text-align: center;
+      background-color: #0d6efd;
+      color: white;
+      margin-bottom: 2rem;
+    }
+    .chart-container {
+      position: relative;
+      height: 60vh;
+    }
+    .multiselect {
+      height: 150px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Financial Time Series Data</h1>
+    <p>Select symbols to visualize their prices over time.</p>
+  </div>
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <label for="dataUrl" class="form-label">CSV Data URL</label>
+        <input type="url" id="dataUrl" class="form-control" placeholder="Enter CSV URL">
+      </div>
+      <div class="col-md-2 align-self-end">
+        <button id="loadDataBtn" class="btn btn-primary">Load Data</button>
+      </div>
+    </div>
+    <div class="row mb-4 justify-content-center align-items-center">
+      <div class="col-md-3 text-center">
+        <label for="symbolSelect" class="form-label">Select Symbols</label>
+        <select id="symbolSelect" class="form-select multiselect" multiple></select>
+      </div>
+      <div class="col-md-3 text-center">
+        <label class="form-label d-block">Normalization</label>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="normalizeOption" id="rawOption" value="raw" checked>
+          <label class="form-check-label" for="rawOption">Raw</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="normalizeOption" id="normalizedOption" value="normalized">
+          <label class="form-check-label" for="normalizedOption">Normalized</label>
+        </div>
+      </div>
+      <div class="col-md-4 text-center">
+        <label class="form-label d-block">Date Range</label>
+        <div class="d-flex justify-content-center gap-2">
+          <input type="date" id="startDate" class="form-control">
+          <input type="date" id="endDate" class="form-control">
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const defaultSourceUrl = 'https://certificate.tpq.io/aia_eod_data.csv';
+    let rawData = [];
+    let symbols = [];
+    let chart = null;
+
+    function loadData(sourceUrl) {
+      const csvUrl = 'http://api.allorigins.win/raw?url=' + encodeURIComponent(sourceUrl);
+      fetch(csvUrl)
+        .then(res => res.text())
+        .then(csvText => {
+          Papa.parse(csvText, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+              rawData = results.data;
+              symbols = results.meta.fields.filter(f => f !== 'Date');
+              initSymbolSelect();
+              initDatePickers();
+              if (!chart) {
+                initChart();
+              } else {
+                updateChart();
+              }
+            }
+          });
+        })
+        .catch(err => console.error('Error fetching CSV:', err));
+    }
+
+    document.getElementById('loadDataBtn').addEventListener('click', () =>
+      loadData(document.getElementById('dataUrl').value)
+    );
+    document.getElementById('dataUrl').value = defaultSourceUrl;
+    document.getElementById('symbolSelect').addEventListener('change', updateChart);
+    document.querySelectorAll('input[name="normalizeOption"]').forEach(el =>
+      el.addEventListener('change', updateChart)
+    );
+    document.getElementById('startDate').addEventListener('change', updateChart);
+    document.getElementById('endDate').addEventListener('change', updateChart);
+
+    // Initial data load
+    loadData(defaultSourceUrl);
+
+    function initSymbolSelect() {
+      const select = document.getElementById('symbolSelect');
+      select.innerHTML = '';
+      symbols.forEach(sym => {
+        const opt = document.createElement('option');
+        opt.value = sym;
+        opt.text = sym;
+        select.appendChild(opt);
+      });
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets: [] },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom' },
+            title: { display: true, text: 'Closing Prices Over Time' }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: { parser: 'yyyy-MM-dd', tooltipFormat: 'DD', unit: 'day', displayFormats: { day: 'yyyy-MM-dd' } },
+              title: { display: true, text: 'Date' }
+            },
+            y: {
+              title: { display: true, text: 'Price' }
+            }
+          }
+        }
+      });
+    }
+
+    function initDatePickers() {
+      const dates = rawData.map(r => r.Date).sort();
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+      const start = document.getElementById('startDate');
+      const end = document.getElementById('endDate');
+      start.min = minDate;
+      start.max = maxDate;
+      start.value = minDate;
+      end.min = minDate;
+      end.max = maxDate;
+      end.value = maxDate;
+    }
+
+    function updateChart() {
+      const selected = Array.from(document.getElementById('symbolSelect').selectedOptions).map(o => o.value);
+      const normalize = document.querySelector('input[name="normalizeOption"]:checked').value === 'normalized';
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      chart.data.datasets = [];
+      selected.forEach((sym, idx) => {
+        const series = rawData
+          .map(row => ({ x: row.Date, y: row[sym] }))
+          .filter(pt => pt.y != null)
+          .filter(pt => (!startDate || pt.x >= startDate) && (!endDate || pt.x <= endDate))
+          .sort((a, b) => new Date(a.x) - new Date(b.x));
+        let data = series;
+        if (normalize && series.length > 0) {
+          const base = series[0].y;
+          data = series.map(pt => ({ x: pt.x, y: pt.y / base }));
+        }
+        const color = getColor(idx, selected.length);
+        chart.data.datasets.push({
+          label: sym,
+          data,
+          borderColor: color,
+          backgroundColor: color,
+          fill: false,
+          tension: 0.1
+        });
+      });
+      chart.options.plugins.title.text = normalize
+        ? 'Normalized Closing Prices Over Time'
+        : 'Closing Prices Over Time';
+      chart.update();
+    }
+
+    function getColor(i, total) {
+      const t = total > 1 ? i / (total - 1) : 0.5;
+      const r = Math.round(255 * t);
+      const g = 0;
+      const b = Math.round(255 * (1 - t));
+      return `rgba(${r},${g},${b},1)`;
+    }
+  </script>
+</body>
+</html>
