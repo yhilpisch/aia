@@ -1,0 +1,24 @@
+Create a Python script that prompts the user for a ticker/symbol (such as SPY) and retrieves data for it via the yfinance Python package, say for the last three years. The data shall be visualized.
+
+Now ask the user for two SMA values (fast, slow) and visualize those SMAs as well.
+
+Now allow for the definition of the number of months for which the data is retrieved, like 48 months for the last 4 years.
+
+Plot the SMAs as dashed lines with lw=1. Add upward (downward) triangles whenever the fast SMA crosses the slow one from above (below).
+
+Implement a backtest for the crossover trading strategy. Start at the date where there is full data for the first time (and not at the first crossover). Show the results in the figure (benchmark + strategy).
+
+Allow for both long-only and long-short trading strategies. Prompt the user for it.
+
+Change the filename to sma_backtest.py. Change the color palette to something like coolwarm (red/blue). And display the performance number in the performance chart. Make sure that there is no overlap.
+
+Make sure that the colors in all subplots are according to the coolwarm (blue/red) color map!
+
+Change back the color of the downwards triangles to gree. And add a frame to the box with the performance results.
+
+What options do we have to migrate the Python script to one with a Web interface, i.e. so that I can us it in the browser?
+
+We go with option 1. Implement it accordingly in a new file that I can run.
+
+There are no new files. And I asked you to use streamlit to port the Python app to the browser. Please do so and call the new file sma_browser.py.
+
