@@ -1,0 +1,28 @@
+Create a Python script that retrieves for multiple tickers EOD data via yfinance and visualizes that data. Set as default ticker symbols AAPL, MSFT, NFLX.
+
+Add the option to normalize the data for plotting.
+
+Use "python" instead of "python3" when testing the code. Add a grid to the plot.
+
+Now copy the core functionality to a new Python file. Add functionality to derive the maximal Sharpe portfolio composition as well as the minimum variance portfolio. Report the detailed statistics.
+
+KeyError: 'Close'
+
+Now set as default that short sales are not allowed. But also provide an option to allow for short sales.
+
+Now add also the visualization of the (normalized) time series data (as before). And add a visualization of the two optimal portfolios' weights.
+
+Change the weights figure to pie charts when short sales are not allowed.
+
+Change the all the color maps to coolwarm (blue to red).
+
+Change it back to the default color map from before.
+
+Now add a figure which shows Monte Carlso simulated portfolios in risk-return space. Allow for the specification of the number of portfolios to be simulated (default: 500). Also show the minimum variance and optimal Sharpe portfolio in that third figure.
+
+Now redesign the code and migrate it to a streamlit application in a new Python file.
+
+Make sure that all number are rounded to a maximum of 4 digits. And change the header "Normalized Price Series" to "Price Series". And set the default for "normalize prices" to True.
+
+When allowing for short sales, make sure that the bar chart is a regular one and not a stacked one.
+
