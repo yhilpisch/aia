@@ -1,0 +1,133 @@
+import numpy as np
+import math
+
+
+class BSM:
+    """
+    Black-Scholes-Merton model for risk-neutral asset price simulation.
+
+    Attributes:
+        r (float): Risk-free interest rate.
+        sigma (float): Volatility.
+        q (float): Dividend yield.
+    """
+    def __init__(self, r: float, sigma: float, q: float = 0.0):
+        self.r = r
+        self.sigma = sigma
+        self.q = q
+
+    def simulate(self,
+                 S0: float,
+                 T: float,
+                 n_paths: int,
+                 n_steps: int = 1,
+                 rng: np.random.Generator = None) -> np.ndarray:
+        """
+        Simulate asset price paths under the risk-neutral measure.
+
+        Args:
+            S0 (float): Initial asset price.
+            T (float): Time to maturity.
+            n_paths (int): Number of simulation paths.
+            n_steps (int): Number of time steps per path.
+            rng (np.random.Generator, optional): Random generator.
+
+        Returns:
+            np.ndarray: Simulated asset prices, shape (n_paths, n_steps+1).
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        dt = T / n_steps
+        drift = (self.r - self.q - 0.5 * self.sigma ** 2) * dt
+        diffusion = self.sigma * np.sqrt(dt)
+
+        paths = np.empty((n_paths, n_steps + 1))
+        paths[:, 0] = S0
+
+        for t in range(1, n_steps + 1):
+            z = rng.standard_normal(n_paths)
+            paths[:, t] = paths[:, t - 1] * np.exp(drift + diffusion * z)
+
+        return paths
+
+
+class MertonJumpDiffusion:
+    """
+    Merton jump-diffusion model for risk-neutral asset price simulation.
+
+    dS/S = (r - q - lam * kappa - 0.5 * sigma**2) dt + sigma dW
+           + (Y - 1) dN,    where log Y ~ N(mu_j, sigma_j**2), N~Poisson(lam dt)
+
+    Attributes:
+        r (float): Risk-free interest rate.
+        sigma (float): Diffusion volatility.
+        lam (float): Jump intensity (Poisson rate).
+        mu_j (float): Mean of jump size log-normal distribution.
+        sigma_j (float): Volatility of jump size log-normal distribution.
+        q (float): Dividend yield.
+    """
+    def __init__(self,
+                 r: float,
+                 sigma: float,
+                 lam: float,
+                 mu_j: float,
+                 sigma_j: float,
+                 q: float = 0.0):
+        self.r = r
+        self.sigma = sigma
+        self.lam = lam
+        self.mu_j = mu_j
+        self.sigma_j = sigma_j
+        self.q = q
+        # compensator to keep martingale: E[Y - 1]
+        self.kappa = math.exp(mu_j + 0.5 * sigma_j ** 2) - 1
+
+    def simulate(self,
+                 S0: float,
+                 T: float,
+                 n_paths: int,
+                 n_steps: int = 1,
+                 rng=None) -> np.ndarray:
+        """
+        Simulate asset price paths under risk-neutral Merton jump-diffusion.
+
+        Args:
+            S0 (float): Initial asset price.
+            T (float): Time to maturity.
+            n_paths (int): Number of simulation paths.
+            n_steps (int): Number of time steps per path.
+            rng (np.random.Generator, optional): Random number generator.
+
+        Returns:
+            np.ndarray: Simulated asset prices, shape (n_paths, n_steps+1).
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        dt = T / n_steps
+        drift = (self.r - self.q - self.lam * self.kappa - 0.5 * self.sigma ** 2) * dt
+        diff_coeff = self.sigma * math.sqrt(dt)
+        jump_mu = self.mu_j
+        jump_sigma = self.sigma_j
+
+        paths = np.empty((n_paths, n_steps + 1))
+        paths[:, 0] = S0
+
+        for t in range(1, n_steps + 1):
+            # diffusion component
+            z = rng.standard_normal(n_paths)
+            # jumps: number of jumps ~ Poisson(lam dt)
+            nj = rng.poisson(self.lam * dt, size=n_paths)
+            # aggregate jump-size log-return: sum of nj iid normals
+            # if nj=0, jump_log = 0
+            jump_log = np.where(
+                nj > 0,
+                rng.normal(nj * jump_mu, np.sqrt(nj) * jump_sigma),
+                0.0,
+            )
+            paths[:, t] = (
+                paths[:, t - 1]
+                * np.exp(drift + diff_coeff * z + jump_log)
+            )
+        return paths

@@ -1,0 +1,1 @@
+I want to create a Python package to flexibly price European and American options with arbitrary payoffs based on Monte Carlo simulation. The package shall be orthogonal and shall separate core functionalities in separate files/modules. The valuation shall primarily be done through MCS. Provide a concise outline and structure for the implementation of this project.
