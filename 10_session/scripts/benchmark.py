@@ -8,99 +8,21 @@ import os
 import sys
 import time
 import math
+import numpy as np
 import argparse
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
-from option_pricing.models import BSM, MertonJumpDiffusion
+from option_pricing.models import BSM, MertonJumpDiffusion, Heston
 from option_pricing.payoffs import CallPayoff, PutPayoff
 from option_pricing.pricers.european import EuropeanPricer
 from option_pricing.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
-
-
-def norm_cdf(x: float) -> float:
-    """Standard normal cumulative distribution function."""
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2)))
-
-
-def merton_price(
-    S0: float,
-    K: float,
-    T: float,
-    r: float,
-    sigma: float,
-    lam: float,
-    mu_j: float,
-    sigma_j: float,
-    q: float = 0.0,
-    n_terms: int = 50,
-) -> float:
-    """
-    Analytical Merton jump-diffusion European call price via Poisson-series expansion.
-
-    Uses the infinite sum: sum_{n=0..n_terms} e^{-lam T}(lam T)^n/n! * BS_call_n,
-    where BS_call_n uses adjusted drift and volatility:
-        r_n = r - lam*(exp(mu_j+0.5*sigma_j**2)-1) + n*mu_j/T
-        sigma_n = sqrt(sigma**2 + n*sigma_j**2/T)
-    """
-    kappa = math.exp(mu_j + 0.5 * sigma_j ** 2) - 1
-    price = 0.0
-    # precompute Poisson factor
-    lamT = lam * T
-    for n in range(0, n_terms + 1):
-        # Poisson weight
-        p_n = math.exp(-lamT) * lamT ** n / math.factorial(n)
-        # adjusted parameters
-        sigma_n = math.sqrt(sigma * sigma + n * sigma_j * sigma_j / T)
-        r_n = r - lam * kappa + n * mu_j / T
-        # Black-Scholes d1, d2
-        sqrtT = math.sqrt(T)
-        d1 = (math.log(S0 / K) + (r_n - q + 0.5 * sigma_n ** 2) * T) / (sigma_n * sqrtT)
-        d2 = d1 - sigma_n * sqrtT
-        # call payoff
-        call_n = (
-            S0 * math.exp(-q * T) * norm_cdf(d1)
-            - K * math.exp(-r * T) * norm_cdf(d2)
-        )
-        price += p_n * call_n
-    return price
-
-
-def bsm_price(
-    S0: float,
-    K: float,
-    T: float,
-    r: float,
-    sigma: float,
-    q: float = 0.0,
-    option_type: str = "call",
-) -> float:
-    """
-    Analytical Black-Scholes-Merton price for European call or put.
-
-    Args:
-        S0: Spot price
-        K: Strike price
-        T: Time to maturity
-        r: Risk-free rate
-        sigma: Volatility
-        q: Dividend yield
-        option_type: 'call' or 'put'
-    """
-    d1 = (math.log(S0 / K) + (r - q + 0.5 * sigma ** 2) * T) / \
-        (sigma * math.sqrt(T))
-    d2 = d1 - sigma * math.sqrt(T)
-    if option_type == "call":
-        return S0 * math.exp(-q * T) * norm_cdf(d1) - K * math.exp(-r * T) * norm_cdf(d2)
-    elif option_type == "put":
-        return K * math.exp(-r * T) * norm_cdf(-d2) - S0 * math.exp(-q * T) * norm_cdf(-d1)
-    else:
-        raise ValueError("option_type must be 'call' or 'put'")
+from option_pricing.analytics import norm_cdf, bsm_price, merton_price, heston_price
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="MC European vs. BSM and CRR American option pricing benchmark"
+        description="MC European/American vs. BSM and CRR American option pricing benchmark"
     )
     parser.add_argument("--S0", type=float, default=100.0,
                         help="Initial spot price")
@@ -133,7 +55,27 @@ def main():
         help="Jump size volatility (sigma_j) for Merton model"
     )
     parser.add_argument("--q", type=float, default=0.0,
-        help="Dividend yield"
+                        help="Dividend yield"
+                        )
+    parser.add_argument(
+        "--kappa", type=float, default=2.0,
+        help="Mean-reversion speed for Heston model"
+    )
+    parser.add_argument(
+        "--theta", type=float, default=0.04,
+        help="Long-run variance theta for Heston model"
+    )
+    parser.add_argument(
+        "--xi", type=float, default=0.2,
+        help="Vol-of-vol xi for Heston model"
+    )
+    parser.add_argument(
+        "--rho", type=float, default=-0.5,
+        help="Correlation rho for Heston model"
+    )
+    parser.add_argument(
+        "--v0", type=float, default=0.02,
+        help="Initial variance v0 for Heston model"
     )
     args = parser.parse_args()
 
@@ -164,9 +106,9 @@ def main():
     for opt_type, payoff_cls, case, S0_case in scenarios:
         payoff = payoff_cls(args.K)
         eur_mc = EuropeanPricer(model, payoff,
-                                 n_paths=args.n_paths,
-                                 n_steps=args.n_steps,
-                                 seed=args.seed)
+                                n_paths=args.n_paths,
+                                n_steps=args.n_steps,
+                                seed=args.seed)
         t0 = time.time()
         price_mc, stderr = eur_mc.price(S0_case, args.T, args.r)
         t_mc = time.time() - t0
@@ -224,7 +166,8 @@ def main():
             )
 
         abs_err_jd = abs(price_mc_jd - price_anal_jd)
-        pct_err_jd = abs_err_jd / price_anal_jd * 100.0 if price_anal_jd != 0 else float('nan')
+        pct_err_jd = abs_err_jd / price_anal_jd * \
+            100.0 if price_anal_jd != 0 else float('nan')
         results_mjd.append((
             opt_type.capitalize(), case,
             price_mc_jd, price_anal_jd,
@@ -245,14 +188,61 @@ def main():
             f"{err:12.6f}{pct:10.2f}{tmc:12.4f}"
         )
 
-    # 3) American options: MC (LSM) vs CRR binomial
+    # 3) Heston stochastic-volatility European options: MC vs semi-analytic
+    model_hes = Heston(
+        args.r, args.kappa, args.theta,
+        args.xi, args.rho, args.v0, q=args.q
+    )
+    results_hes = []
+    for opt_type, payoff_cls, case, S0_case in scenarios:
+        payoff = payoff_cls(args.K)
+        hes_mc = EuropeanPricer(
+            model_hes, payoff,
+            n_paths=args.n_paths,
+            n_steps=args.n_steps,
+            seed=args.seed
+        )
+        t0 = time.time()
+        price_mc_hes, stderr_hes = hes_mc.price(S0_case, args.T, args.r)
+        t_mc_hes = time.time() - t0
+
+        price_an_hes = heston_price(
+            S0_case, args.K, args.T, args.r,
+            args.kappa, args.theta, args.xi,
+            args.rho, args.v0, args.q
+        )
+
+        abs_err = abs(price_mc_hes - price_an_hes)
+        pct_err = abs_err / price_an_hes * \
+            100.0 if price_an_hes != 0 else float('nan')
+        results_hes.append((
+            opt_type.capitalize(), case,
+            price_mc_hes, price_an_hes,
+            abs_err, pct_err,
+            t_mc_hes
+        ))
+
+    print("\nHeston SV model European (MC vs semi-analytic):")
+    header_hes = (
+        f"{'Type':<6}{'Case':<6}"
+        f"{'MC Price':>12}{'Analytic':>14}{'Abs Err':>12}{'% Err':>10}{'MC Time(s)':>12}"
+    )
+    print(header_hes)
+    print('-' * len(header_hes))
+    for typ, case, mc, an, err, pct, tmc in results_hes:
+        print(
+            f"{typ:<6}{case:<6}{mc:12.6f}{an:14.6f}"
+            f"{err:12.6f}{pct:10.2f}{tmc:12.4f}"
+        )
+
+    # 4) American options: MC (LSM) vs CRR binomial
     results_amer = []
     for opt_type, payoff_cls, case, S0_case in scenarios:
         payoff = payoff_cls(args.K)
         am_mc = LongstaffSchwartzPricer(model, payoff,
-                                       n_paths=args.n_paths,
-                                       n_steps=args.n_steps,
-                                       seed=args.seed)
+                                        n_paths=args.n_paths,
+                                        n_steps=args.n_steps,
+                                        seed=args.seed)
         t0 = time.time()
         price_am_mc, stderr_am = am_mc.price(S0_case, args.T, args.r)
         t_mc_am = time.time() - t0
@@ -263,7 +253,8 @@ def main():
         t_crr = time.time() - t0
 
         abs_err = abs(price_am_mc - price_crr)
-        pct_err = abs_err / price_crr * 100.0 if price_crr != 0 else float("nan")
+        pct_err = abs_err / price_crr * \
+            100.0 if price_crr != 0 else float("nan")
         results_amer.append((opt_type.capitalize(), case,
                              price_am_mc, price_crr,
                              abs_err, pct_err,
@@ -283,6 +274,7 @@ def main():
             f"{typ:<6}{case:<6}{mc:12.6f}{crr:12.6f}"
             f"{err:12.6f}{pct:10.2f}{tmc:12.4f} {tcrr:12.4f}"
         )
+
 
 if __name__ == "__main__":
     main()

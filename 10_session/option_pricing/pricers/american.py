@@ -41,13 +41,13 @@ class AmericanBinomialPricer:
         # asset prices at maturity
         prices = [S0 * (u ** (n - j)) * (d ** j) for j in range(n + 1)]
         # option values at maturity
-        values = [self.payoff(price) for price in prices]
+        values = [float(self.payoff(price)) for price in prices]
 
         # backward induction
         for i in range(n - 1, -1, -1):
             for j in range(i + 1):
                 cont = disc * (p * values[j] + (1 - p) * values[j + 1])
-                exercise = self.payoff(S0 * (u ** (i - j)) * (d ** j))
+                exercise = float(self.payoff(S0 * (u ** (i - j)) * (d ** j)))
                 values[j] = max(exercise, cont)
         return values[0]
 
