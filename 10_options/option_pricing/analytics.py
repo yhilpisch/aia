@@ -77,9 +77,14 @@ def merton_price(
     return price
 
 
-def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=50):
+# the following Heston pricing implementation is from Gemini, after numerous tries with
+# different LLMs, basically none was able to provide a properly working implementation
+# Gemini only came up with that one after having seen my own reference implementation
+# from my book "Derivatives Analytics with Python"; basically the firs time that
+# none of the AI Assistants was able to provide a solution to such a quant finance problem
+def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=250):
     """
-    Calculate the price of a European call option using the Heston model via characteristic function.
+    Calculate the price of a European call option using the Heston model via the single-integral Lewis (2001) formula.
     Includes a fix to prevent negative prices by flooring at zero.
     
     Parameters:
@@ -93,61 +98,52 @@ def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=50
     - xi: Volatility of variance (vol of vol)
     - rho: Correlation between stock price and variance processes
     - v0: Initial variance
-    - integration_limit: Upper bound for numerical integration to avoid overflow
+    - integration_limit: Upper bound for numerical integration
     
     Returns:
     - call_price: Price of the European call option, floored at zero
     """
-    def heston_char_func(u, S0, T, r, q, kappa, theta, xi, rho, v0, j):
-        if j == 1:
-            u_j = u - 0.5
-            b_j = kappa + xi * rho
-        else:
-            u_j = u
-            b_j = kappa
-        x = np.log(S0)
-        term1 = xi * rho * u_j * 1j - b_j
-        term2 = xi**2 * (2 * u_j * 1j - u_j**2)
-        d = np.sqrt(term1**2 - term2)
-        g = (b_j - xi * rho * u_j * 1j + d) / (b_j - xi * rho * u_j * 1j - d)
-        exp_dT = np.exp(np.clip(d * T, -700, 700))
-        denom_log = 1 - g
-        num_log = 1 - g * exp_dT
-        if np.abs(denom_log) < 1e-10 or np.abs(num_log) < 1e-10:
-            log_term = 0
-        else:
-            log_term = np.log(num_log / denom_log)
-        term1_C = (b_j - xi * rho * u_j * 1j + d) * T
-        term2_C = 2 * log_term
-        C = (r - q) * u_j * 1j * T + (kappa * theta) / (xi**2) * (term1_C - term2_C)
-        denom_D = 1 - g * exp_dT
-        if np.abs(denom_D) < 1e-10:
-            D = 0
-        else:
-            D = (b_j - xi * rho * u_j * 1j + d) / (xi**2) * (1 - exp_dT) / denom_D
-        return np.exp(C + D * v0 + 1j * u_j * x)
     
-    def integrand_P1(u):
-        k = np.log(K)
-        phi = heston_char_func(u - 1j, S0, T, r, q, kappa, theta, xi, rho, v0, 1)
-        denom = 1j * u * heston_char_func(-1j, S0, T, r, q, kappa, theta, xi, rho, v0, 1)
-        if np.abs(denom) < 1e-10:
-            return 0
-        return np.real(np.exp(-1j * u * k) * phi / denom)
     
-    def integrand_P2(u):
-        k = np.log(K)
-        phi = heston_char_func(u, S0, T, r, q, kappa, theta, xi, rho, v0, 2)
-        denom = 1j * u
-        if np.abs(denom) < 1e-10:
-            return 0
-        return np.real(np.exp(-1j * u * k) * phi / denom)
+    def _lewis_integrand(u, S0, K, T, r, q, kappa, theta, xi, rho, v0):
+        """The integrand for the Lewis (2001) single-integral formula."""
+
+        # Calculate the characteristic function value at the complex point u - i/2
+        char_func_val = _lewis_char_func(u - 0.5j, T, r, q, kappa, theta, xi, rho, v0)
+
+        # The Lewis formula integrand
+        integrand = 1 / (u**2 + 0.25) * (np.exp(1j * u * np.log(S0 / K)) * char_func_val).real
+
+        return integrand
+
+
+    def _lewis_char_func(u, T, r, q, kappa, theta, xi, rho, v0):
+        """The Heston characteristic function of the log-price."""
+
+        c1 = kappa * theta
+        d = np.sqrt((rho * xi * u * 1j - kappa)**2 - xi**2 * (-u * 1j - u**2))
+        g = (kappa - rho * xi * u * 1j - d) / (kappa - rho * xi * u * 1j + d)
+
+        # The 'C' and 'D' components of the characteristic function
+        C = (r - q) * u * 1j * T + (c1 / xi**2) * \
+            ((kappa - rho * xi * u * 1j - d) * T - 2 * np.log((1 - g * np.exp(-d * T)) / (1 - g)))
+
+        D = (kappa - rho * xi * u * 1j - d) / xi**2 * \
+            ((1 - np.exp(-d * T)) / (1 - g * np.exp(-d * T)))
+
+        return np.exp(C + D * v0)
     
-    P1 = 0.5 + (1 / np.pi) * quad(integrand_P1, 0, integration_limit, limit=100)[0]
-    P2 = 0.5 + (1 / np.pi) * quad(integrand_P2, 0, integration_limit, limit=100)[0]
-    F = S0 * np.exp((r - q) * T)
-    call_price = np.exp(-r * T) * (F * P1 - K * P2)
-    return max(call_price, 0)  # Floor at zero to prevent negative prices
+    # Perform the integration
+    integral_value = quad(
+        lambda u: _lewis_integrand(u, S0, K, T, r, q, kappa, theta, xi, rho, v0),
+        0, 
+        integration_limit
+    )[0]
+
+    # Calculate the final call price using the Lewis formula
+    price = S0 * np.exp(-q * T) - np.exp(-r * T) * np.sqrt(S0 * K) / np.pi * integral_value
+    
+    return max(0, price)
 
 
 # Test script with provided parameters
@@ -160,9 +156,9 @@ if __name__ == "__main__":
     q = 0.0         # Dividend yield
     kappa = 2.0     # Mean reversion rate
     theta = 0.04    # Long-term variance
-    xi = 0.02       # Volatility of variance
+    xi = 0.2        # Volatility of variance
     rho = -0.7      # Correlation
-    v0 = 0.04       # Initial variance
+    v0 = 0.02       # Initial variance
     
     # Calculate the call option price with a finite integration limit
     for K in [50, 75, 100, 125, 150]:

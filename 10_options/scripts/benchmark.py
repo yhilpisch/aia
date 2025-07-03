@@ -207,9 +207,8 @@ def main():
         t_mc_hes = time.time() - t0
 
         price_an_hes = heston_price(
-            S0_case, args.K, args.T, args.r,
-            args.kappa, args.theta, args.xi,
-            args.rho, args.v0, args.q
+            S0_case, args.K, args.T, args.r, args.q,
+            args.kappa, args.theta, args.xi, args.rho, args.v0
         )
 
         abs_err = abs(price_mc_hes - price_an_hes)
