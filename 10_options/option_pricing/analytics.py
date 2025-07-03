@@ -82,7 +82,7 @@ def merton_price(
 # Gemini only came up with that one after having seen my own reference implementation
 # from my book "Derivatives Analytics with Python"; basically the firs time that
 # none of the AI Assistants was able to provide a solution to such a quant finance problem
-def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=250):
+def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, option_type="call", integration_limit=250):
     """
     Calculate the price of a European call option using the Heston model via the single-integral Lewis (2001) formula.
     Includes a fix to prevent negative prices by flooring at zero.
@@ -98,6 +98,7 @@ def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=25
     - xi: Volatility of variance (vol of vol)
     - rho: Correlation between stock price and variance processes
     - v0: Initial variance
+    - option_type: 'call' or 'put'
     - integration_limit: Upper bound for numerical integration
     
     Returns:
@@ -119,18 +120,17 @@ def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=25
 
     def _lewis_char_func(u, T, r, q, kappa, theta, xi, rho, v0):
         """The Heston characteristic function of the log-price."""
-
-        c1 = kappa * theta
-        d = np.sqrt((rho * xi * u * 1j - kappa)**2 - xi**2 * (-u * 1j - u**2))
+        
+        d = np.sqrt((kappa - rho * xi * u * 1j)**2 + (u**2 + u * 1j) * xi**2)
+        
         g = (kappa - rho * xi * u * 1j - d) / (kappa - rho * xi * u * 1j + d)
-
-        # The 'C' and 'D' components of the characteristic function
-        C = (r - q) * u * 1j * T + (c1 / xi**2) * \
-            ((kappa - rho * xi * u * 1j - d) * T - 2 * np.log((1 - g * np.exp(-d * T)) / (1 - g)))
-
-        D = (kappa - rho * xi * u * 1j - d) / xi**2 * \
-            ((1 - np.exp(-d * T)) / (1 - g * np.exp(-d * T)))
-
+        
+        C = (r - q) * u * 1j * T + (kappa * theta / xi**2) * (
+            (kappa - rho * xi * u * 1j - d) * T - 2 * np.log((1 - g * np.exp(-d * T)) / (1 - g))
+        )
+        
+        D = ((kappa - rho * xi * u * 1j - d) / xi**2) * ((1 - np.exp(-d * T)) / (1 - g * np.exp(-d * T)))
+        
         return np.exp(C + D * v0)
     
     # Perform the integration
@@ -141,9 +141,14 @@ def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, integration_limit=25
     )[0]
 
     # Calculate the final call price using the Lewis formula
-    price = S0 * np.exp(-q * T) - np.exp(-r * T) * np.sqrt(S0 * K) / np.pi * integral_value
+    call_price = S0 * np.exp(-q * T) - np.exp(-r * T) * np.sqrt(S0 * K) / np.pi * integral_value
     
-    return max(0, price)
+    if option_type == "call":
+        return max(0, call_price)
+    elif option_type == "put":
+        return max(0, call_price - S0 * math.exp(-q * T) + K * math.exp(-r * T))
+    else:
+        raise ValueError("Option type must be 'call' or 'put'.")
 
 
 # Test script with provided parameters

@@ -52,6 +52,8 @@ class BSM:
         return paths
 
 
+# This class has been corrected by Gemini with regard to the discretization
+# approach to yield better convergence and valuation results.
 class Heston:
     """
     Heston stochastic volatility model.
@@ -110,14 +112,14 @@ class Heston:
             w1 = z1
             w2 = self.rho * z1 + math.sqrt(1 - self.rho ** 2) * z2
 
-            v = np.maximum(v, 0)
-            v = v + self.kappa * (self.theta - v) * dt + self.xi * np.sqrt(v * dt) * w2
-            v = np.maximum(v, 0)
+            v_pos = np.maximum(v, 0)
 
             S[:, t] = (
                 S[:, t - 1]
-                * np.exp((self.r - self.q - 0.5 * v) * dt + np.sqrt(v * dt) * w1)
+                * np.exp((self.r - self.q - 0.5 * v_pos) * dt + np.sqrt(v_pos * dt) * w1)
             )
+
+            v = v + self.kappa * (self.theta - v) * dt + self.xi * np.sqrt(v_pos * dt) * w2
         return S
 
 

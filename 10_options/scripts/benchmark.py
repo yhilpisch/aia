@@ -208,7 +208,8 @@ def main():
 
         price_an_hes = heston_price(
             S0_case, args.K, args.T, args.r, args.q,
-            args.kappa, args.theta, args.xi, args.rho, args.v0
+            args.kappa, args.theta, args.xi, args.rho, args.v0,
+            option_type=opt_type
         )
 
         abs_err = abs(price_mc_hes - price_an_hes)
