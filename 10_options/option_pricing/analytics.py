@@ -4,7 +4,15 @@ import math
 
 
 def norm_cdf(x: float) -> float:
-    """Standard normal cumulative distribution function."""
+    """
+    Standard normal cumulative distribution function.
+
+    Args:
+        x (float): Value at which to evaluate the CDF.
+
+    Returns:
+        float: Cumulative distribution function of a standard normal at x.
+    """
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2)))
 
 
@@ -18,16 +26,19 @@ def bsm_price(
     option_type: str = "call",
 ) -> float:
     """
-    Analytical Black-Scholes-Merton price for European call or put.
+    Analytical Black-Scholes-Merton price for a European option.
 
     Args:
-        S0: Spot price
-        K: Strike price
-        T: Time to maturity
-        r: Risk-free rate
-        sigma: Volatility
-        q: Dividend yield
-        option_type: 'call' or 'put'
+        S0 (float): Initial asset price.
+        K (float): Strike price.
+        T (float): Time to maturity.
+        r (float): Risk-free interest rate.
+        sigma (float): Volatility of the underlying.
+        q (float): Dividend yield. Default is 0.0.
+        option_type (str): 'call' or 'put'. Default is 'call'.
+
+    Returns:
+        float: Black-Scholes-Merton option price.
     """
     d1 = (math.log(S0 / K) + (r - q + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
     d2 = d1 - sigma * math.sqrt(T)
@@ -49,32 +60,66 @@ def merton_price(
     mu_j: float,
     sigma_j: float,
     q: float = 0.0,
-    n_terms: int = 50,
+    option_type: str = "call",
+    n_terms: int = None,
 ) -> float:
     """
-    Analytical Merton jump-diffusion European call price via Poisson-series expansion.
+    European option price (call or put) under the Merton jump-diffusion model
+    via the Lewis (2001) characteristic function single-integral formula.
 
-    Uses the infinite sum: sum_{n=0..n_terms} e^{-lam*T}(lam*T)^n/n! * BS_call_n,
-    where BS_call_n uses adjusted drift and volatility:
-        r_n = r - lam*(exp(mu_j+0.5*sigma_j^2)-1) + n*mu_j/T
-        sigma_n = sqrt(sigma^2 + n*sigma_j^2/T)
+    Args:
+        S0 (float): Initial asset price.
+        K (float): Strike price.
+        T (float): Time to maturity.
+        r (float): Risk-free interest rate.
+        sigma (float): Diffusion volatility.
+        lam (float): Jump intensity (Poisson rate).
+        mu_j (float): Mean of log-jump size.
+        sigma_j (float): Volatility of log-jump size.
+        q (float): Dividend yield.
+        option_type (str): 'call' or 'put'. Default is 'call'.
+        n_terms (int, optional): Retained for compatibility (not used by CF method).
+
+    Returns:
+        float: European option price (floored at zero).
     """
+    # Jump compensator: E[e^{Xi} - 1]
     kappa = math.exp(mu_j + 0.5 * sigma_j ** 2) - 1
-    lamT = lam * T
-    price = 0.0
-    for n in range(n_terms + 1):
-        p_n = math.exp(-lamT) * lamT ** n / math.factorial(n)
-        sigma_n = math.sqrt(sigma * sigma + n * sigma_j * sigma_j / T)
-        r_n = r - lam * kappa + n * mu_j / T
-        sqrtT = math.sqrt(T)
-        d1 = (math.log(S0 / K) + (r_n - q + 0.5 * sigma_n ** 2) * T) / (sigma_n * sqrtT)
-        d2 = d1 - sigma_n * sqrtT
-        call_n = (
-            S0 * math.exp(-q * T) * norm_cdf(d1)
-            - K * math.exp(-r * T) * norm_cdf(d2)
+
+    # Characteristic function of log-return X = ln(S_T/S0)
+    def phi(u):
+        omega = r - q - 0.5 * sigma * sigma - lam * kappa
+        return np.exp(
+            1j * u * omega * T
+            - 0.5 * sigma * sigma * u * u * T
+            + lam * T * (np.exp(1j * u * mu_j - 0.5 * sigma_j * sigma_j * u * u) - 1)
         )
-        price += p_n * call_n
-    return price
+
+    # Integrand for Lewis formula
+    def integrand(u):
+        a = u - 0.5j
+        phi_val = phi(a)
+        x = math.log(S0 / K)
+        return (np.exp(1j * u * x) * phi_val).real / (u * u + 0.25)
+
+    # Numerical integration over [0, ∞)
+    integral_value = quad(integrand, 0.0, np.inf, limit=1000)[0]
+
+    # Compute call price
+    call_price = (
+        S0 * math.exp(-q * T)
+        - (math.exp(-r * T) * math.sqrt(S0 * K) / math.pi) * integral_value
+    )
+    # Floor at zero
+    call_price = max(call_price, 0.0)
+    if option_type == "call":
+        return call_price
+    elif option_type == "put":
+        # Put-call parity: P = C - S0*e^{-qT} + K*e^{-rT}
+        put_price = call_price - S0 * math.exp(-q * T) + K * math.exp(-r * T)
+        return max(put_price, 0.0)
+    else:
+        raise ValueError("option_type must be 'call' or 'put'")
 
 
 # the following Heston pricing implementation is from Gemini, after numerous tries with
@@ -82,27 +127,40 @@ def merton_price(
 # Gemini only came up with that one after having seen my own reference implementation
 # from my book "Derivatives Analytics with Python"; basically the firs time that
 # none of the AI Assistants was able to provide a solution to such a quant finance problem
-def heston_price(S0, K, T, r, q, kappa, theta, xi, rho, v0, option_type="call", integration_limit=250):
+def heston_price(
+    S0: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    kappa: float,
+    theta: float,
+    xi: float,
+    rho: float,
+    v0: float,
+    option_type: str = "call",
+    integration_limit: float = 250.0,
+) -> float:
     """
-    Calculate the price of a European call option using the Heston model via the single-integral Lewis (2001) formula.
-    Includes a fix to prevent negative prices by flooring at zero.
-    
-    Parameters:
-    - S0: Initial stock price
-    - K: Strike price
-    - T: Time to maturity (in years)
-    - r: Risk-free interest rate
-    - q: Dividend yield
-    - kappa: Mean reversion rate of variance
-    - theta: Long-term variance
-    - xi: Volatility of variance (vol of vol)
-    - rho: Correlation between stock price and variance processes
-    - v0: Initial variance
-    - option_type: 'call' or 'put'
-    - integration_limit: Upper bound for numerical integration
-    
+    European option price under the Heston stochastic volatility model via the Lewis (2001)
+    single-integral characteristic function formula.
+
+    Args:
+        S0 (float): Initial asset price.
+        K (float): Strike price.
+        T (float): Time to maturity.
+        r (float): Risk-free interest rate.
+        q (float): Dividend yield.
+        kappa (float): Mean-reversion speed of variance.
+        theta (float): Long-run variance of variance process.
+        xi (float): Volatility of variance (vol-of-vol).
+        rho (float): Correlation between asset price and variance.
+        v0 (float): Initial variance.
+        option_type (str): 'call' or 'put'.
+        integration_limit (float): Upper limit for numerical integration.
+
     Returns:
-    - call_price: Price of the European call option, floored at zero
+        float: European option price (call or put), floored at zero.
     """
     
     
