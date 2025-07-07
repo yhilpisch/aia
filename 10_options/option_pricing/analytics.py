@@ -49,6 +49,82 @@ def bsm_price(
     else:
         raise ValueError("option_type must be 'call' or 'put'")
 
+# Bates model: Heston SV + Merton jumps
+def bcc_price(
+    S0: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    kappa: float,
+    theta: float,
+    xi: float,
+    rho: float,
+    v0: float,
+    lam: float,
+    mu_j: float,
+    sigma_j: float,
+    option_type: str = "call",
+    integration_limit: float = 250.0,
+) -> float:
+    """
+    European option price under the Bates model (Heston SV + Merton jumps) via Lewis CF.
+
+    Args:
+        S0 (float): Initial asset price.
+        K (float): Strike price.
+        T (float): Time to maturity.
+        r (float): Risk-free rate.
+        q (float): Dividend yield.
+        kappa (float): Heston mean-reversion speed.
+        theta (float): Heston long-run variance.
+        xi (float): Heston vol-of-vol.
+        rho (float): Correlation in Heston.
+        v0 (float): Initial Heston variance.
+        lam (float): Jump intensity (Poisson rate).
+        mu_j (float): Mean of log jump size.
+        sigma_j (float): Std dev of log jump size.
+        option_type (str): 'call' or 'put'. Default 'call'.
+        integration_limit (float): Integration upper limit.
+
+    Returns:
+        float: European option price (floored at zero).
+    """
+    # Jump compensator for drift correction
+    kappa_j = math.exp(mu_j + 0.5 * sigma_j ** 2) - 1
+
+    # Heston CF (Lewis) with jump drift compensation
+    def heston_cf(u):
+        d = np.sqrt((kappa - rho * xi * u * 1j) ** 2 + (u ** 2 + u * 1j) * xi ** 2)
+        g = (kappa - rho * xi * u * 1j - d) / (kappa - rho * xi * u * 1j + d)
+        C = (r - q - lam * kappa_j) * u * 1j * T + (kappa * theta / xi ** 2) * (
+            (kappa - rho * xi * u * 1j - d) * T - 2 * np.log((1 - g * np.exp(-d * T)) / (1 - g))
+        )
+        D = ((kappa - rho * xi * u * 1j - d) / xi ** 2) * ((1 - np.exp(-d * T)) / (1 - g * np.exp(-d * T)))
+        return np.exp(C + D * v0)
+
+    # Combined CF
+    def phi(u):
+        return heston_cf(u) * np.exp(lam * T * (np.exp(1j * u * mu_j - 0.5 * sigma_j * sigma_j * u * u) - 1))
+
+    # Integrand
+    def integrand(u):
+        z = u - 0.5j
+        x = math.log(S0 / K)
+        return (np.exp(1j * u * x) * phi(z)).real / (u * u + 0.25)
+
+    # integrate up to a finite limit for better numerical stability
+    integral_value = quad(integrand, 0.0, integration_limit)[0]
+    call_price = S0 * math.exp(-q * T) - math.exp(-r * T) * math.sqrt(S0 * K) / math.pi * integral_value
+    call_price = max(call_price, 0.0)
+    if option_type == "call":
+        return call_price
+    elif option_type == "put":
+        put_price = call_price - S0 * math.exp(-q * T) + K * math.exp(-r * T)
+        return max(put_price, 0.0)
+    else:
+        raise ValueError("option_type must be 'call' or 'put'")
+
 
 def merton_price(
     S0: float,

@@ -1,0 +1,22 @@
+I want to create a Python package to flexibly price European and American options with arbitrary payoffs based on Monte Carlo simulation. The package shall be orthogonal and shall separate core functionalities in separate files/modules. The valuation shall primarily be done through MCS. Provide a concise outline and structure for the implementation of this project.
+
+Write the outline in markdown in a new file outline.md.
+
+Start with the first implementations so that we can value plain vanilla European put and call options in the BSM 1973 models.
+
+No, don't do that — stop for now.
+
+When executing Python code, use "python" instead of "python3". Implement a script that benchmarks the European option pricing based on Monte Carlo against the analytical BSM 1973 values.
+
+Update the benchmark to include for both options ATM/ITM cases. Present the results in a table. Including absolute and % valuation errors in each case.
+
+Also add the respective OTM cases.
+
+Now add the pricing of American options to the package. For the benchmarking of the ATM/ITM/OTM option generate benchmark values based on the CRR 1979 binomial option pricing model.
+
+You should implement a benchmark for the European options prices against the analytical ones AND for the American options prices from MCS against the American option values from the CRR 1979 model. In both cases for puts and calls ATM/ITM/OTM.
+
+Now add as an additional model for simulating paths the Merton jump diffusion model.
+
+For the benchmarking of the jump diffusion model, implement pricing formulas for that model based on the characteristic function. Amend the benchmarking file to include bencharks for European put/call ATM/ITM/OTM options in that model.
+

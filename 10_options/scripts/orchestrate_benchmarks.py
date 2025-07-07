@@ -106,6 +106,8 @@ def main():
             ret_labels = ["MCS", "StdErr", "Analytic", "Abs Err", "% Err", "MC Time(s)"]
         elif module_name == "european_heston":
             ret_labels = ["MCS", "StdErr", "Analytic", "Abs Err", "% Err", "MC Time(s)"]
+        elif module_name == "european_bcc":
+            ret_labels = ["MCS", "StdErr", "Analytic", "Abs Err", "% Err", "MC Time(s)"]
         elif module_name == "american_lsm_crr":
             ret_labels = ["LSM Price", "StdErr", "CRR Price", "Abs Err", "% Err", "MC Time(s)", "Tree Time(s)"]
         else:
