@@ -207,8 +207,9 @@ def main():
         t_mc_hes = time.time() - t0
 
         price_an_hes = heston_price(
-            S0_case, args.K, args.T, args.r, args.q,
+            S0_case, args.K, args.T, args.r,
             args.kappa, args.theta, args.xi, args.rho, args.v0,
+            q=args.q,
             option_type=opt_type
         )
 

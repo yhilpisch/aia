@@ -29,6 +29,9 @@ class AmericanBinomialPricer:
             float: American option price.
         """
         sigma = self.model.sigma
+        # degenerate zero-volatility American: immediate exercise intrinsic
+        if sigma <= 0 or T <= 0:
+            return float(self.payoff(S0))
         q = getattr(self.model, 'q', 0.0)
         n = self.n_steps
         dt = T / n
