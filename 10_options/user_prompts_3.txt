@@ -1,0 +1,51 @@
+--auto-edit
+
+Transform the merton_price function in option_pricing/analytics.py to a valuation based on Lewis 2001 and the characteristic function of the Merton 1976 model. Also unify the signature and docstrings of all pricing functions in that module.
+
+/compact
+
+Check the merton_price implementation in analytics.py. The values are by far not correct. See the output from scripts/benchmark.py: Merton jump-diffusion European (MC vs analytic):
+Type  Case      MC Price    Analytic     Abs Err     % Err  MC Time(s)
+----------------------------------------------------------------------
+Call  ATM      11.558846    0.000000   11.558846       nan      0.1786
+Call  ITM      18.761541    0.000000   18.761541       nan      0.1784
+Call  OTM       6.023161    0.000000    6.023161       nan      0.1772
+Put   ATM       6.637481   -4.877058   11.514538   -236.10      0.1779
+Put   ITM      11.106226    5.122942    5.983284    116.79      0.2409
+Put   OTM       3.835745  -14.877058   18.712802   -125.78      0.1789
+
+Transform the signature of heston_price to be in line with those the BSM/Merton functions in analytics.py.
+
+Analyze the benchmark.py file. Separate out the single benchmarks into several modules. Adjust the order of the cases to ITM-ATM-OTM. Add to the single tables the StdErr values from the MCS right after MC Price. Create a file orchestrate.py that orchestrates the complete benchmark based on the new modules.
+
+Put the single benchmark modules in a separate sub-folder in scripts/.
+
+Traceback (most recent call last):
+  File "/Users/yves/Dropbox/Program/cpf/57_ai_assistants/git/10_options/scripts/benchmarks/benchmark_american.py", line 13, in <module>
+    from option_pricing.models import BSM
+ModuleNotFoundError: No module named 'option_pricing'
+
+Implement a comprehensive test suite according to the project plan as outlined in the file outline.md
+
+Write the above highlights into a new file test.md and add relevant details if appropriate.
+
+When running the tests, getting: tests/test_pricers_european.py:2: in <module>
+    from option_pricing.models import BSM
+E   ModuleNotFoundError: No module named 'option_pricing'
+
+Among others, I get from pytest -q the following: option_pricing/analytics.py:35: ZeroDivisionError
+============================================================================== short test summary info ===============================================================================
+FAILED tests/test_monte_carlo.py::test_price_mc_zero_volatility - assert np.float64(1.2688263138573217e-16) == 0.0
+FAILED tests/test_pricers_american.py::test_crr_binomial_call_no_dividend_intrinsic - ZeroDivisionError: float division by zero
+FAILED tests/test_pricers_european.py::test_european_pricer_matches_bsm[call] - ZeroDivisionError: float division by zero
+FAILED tests/test_pricers_european.py::test_european_pricer_matches_bsm[put] - ZeroDivisionError: float division by zero
+4 failed, 11 passed in 0.43s
+
+>       assert stderr == 0.0
+E       assert np.float64(1.2688263138573217e-16) == 0.0
+
+tests/test_monte_carlo.py:15: AssertionError
+============================================================================== short test summary info ===============================================================================
+FAILED tests/test_monte_carlo.py::test_price_mc_zero_volatility - assert np.float64(1.2688263138573217e-16) == 0.0
+1 failed, 14 passed in 0.39s
+
