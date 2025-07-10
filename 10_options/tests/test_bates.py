@@ -3,9 +3,9 @@ import math
 import numpy as np
 import pytest
 
-from option_pricing.models import Bates
-from option_pricing.bates import simulate_bates, bates_price
-from option_pricing.analytics import heston_price
+from mcdxa.models import Bates
+from mcdxa.bates import simulate_bates, bates_price
+from mcdxa.analytics import heston_price
 
 
 def test_simulate_bates_shape_and_values():

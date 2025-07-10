@@ -2,7 +2,7 @@ import numpy as np
 import math
 import pytest
 
-from option_pricing.models import BSM, Heston, MertonJumpDiffusion
+from mcdxa.models import BSM, Heston, MertonJumpDiffusion
 
 
 def test_bsm_deterministic_growth():

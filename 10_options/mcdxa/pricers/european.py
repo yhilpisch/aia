@@ -34,7 +34,6 @@ class EuropeanPricer:
         Returns:
             tuple: (price, stderr)
         """
-        # call core MC engine
         return price_mc(
             self.payoff, self.model, S0, T, r,
             self.n_paths, self.n_steps, rng=self.rng

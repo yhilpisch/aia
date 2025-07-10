@@ -1,11 +1,7 @@
 import numpy as np
 import math
 from scipy.integrate import quad
-try:
-    from option_pricing.models import Bates
-except ImportError:
-    # allow script execution when package not installed
-    from models import Bates
+from .models import Bates
 
 
 def simulate_bates(

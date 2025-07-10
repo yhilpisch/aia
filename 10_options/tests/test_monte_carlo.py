@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 
-from option_pricing.monte_carlo import price_mc
-from option_pricing.models import BSM
-from option_pricing.payoffs import CallPayoff
+from mcdxa.monte_carlo import price_mc
+from mcdxa.models import BSM
+from mcdxa.payoffs import CallPayoff
 
 
 def test_price_mc_zero_volatility():
@@ -12,7 +12,7 @@ def test_price_mc_zero_volatility():
     payoff = CallPayoff(strike=100.0)
     # With zero volatility, the payoff is deterministic and matches BSM analytic
     price, stderr = price_mc(payoff, model, S0=100.0, T=1.0, r=0.05, n_paths=50, n_steps=1)
-    from option_pricing.analytics import bsm_price
+    from mcdxa.analytics import bsm_price
     expected = bsm_price(100.0, 100.0, 1.0, 0.05, 0.0, option_type='call')
     assert stderr == pytest.approx(0.0, abs=1e-12)
     assert price == pytest.approx(expected, rel=1e-6)

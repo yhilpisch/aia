@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from option_pricing.payoffs import (
+from mcdxa.payoffs import (
     CallPayoff, PutPayoff,
     AsianCallPayoff, AsianPutPayoff,
     LookbackCallPayoff, LookbackPutPayoff,

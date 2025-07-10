@@ -1,14 +1,8 @@
-try:
-    from option_pricing.bsm import norm_cdf, bsm_price
-    from option_pricing.merton import merton_price
-    from option_pricing.heston import heston_price
-    from option_pricing.bates import bates_price
-except ImportError:
-    # allow script execution when module not installed
-    from bsm import norm_cdf, bsm_price
-    from merton import merton_price
-    from heston import heston_price
-    from bates import bates_price
+# core pricing functions
+from .bsm     import norm_cdf, bsm_price
+from .merton  import merton_price
+from .heston  import heston_price
+from .bates   import simulate_bates, bates_price
 
 # Test script with provided parameters
 if __name__ == "__main__":

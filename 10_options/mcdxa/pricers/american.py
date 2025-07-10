@@ -29,7 +29,7 @@ class AmericanBinomialPricer:
             float: American option price.
         """
         sigma = self.model.sigma
-        # degenerate zero-volatility American: immediate exercise intrinsic
+        # degenerate zero-volatility: immediate exercise
         if sigma <= 0 or T <= 0:
             return float(self.payoff(S0))
         q = getattr(self.model, 'q', 0.0)
@@ -38,15 +38,11 @@ class AmericanBinomialPricer:
         u = math.exp(sigma * math.sqrt(dt))
         d = 1 / u
         disc = math.exp(-r * dt)
-        # risk-neutral probability
         p = (math.exp((r - q) * dt) - d) / (u - d)
 
-        # asset prices at maturity
         prices = [S0 * (u ** (n - j)) * (d ** j) for j in range(n + 1)]
-        # option values at maturity
         values = [float(self.payoff(price)) for price in prices]
 
-        # backward induction
         for i in range(n - 1, -1, -1):
             for j in range(i + 1):
                 cont = disc * (p * values[j] + (1 - p) * values[j + 1])
@@ -84,27 +80,23 @@ class LongstaffSchwartzPricer:
             r: Risk-free rate.
 
         Returns:
-            (price, stderr): discounted price and its standard error estimate.
+            (price, stderr): discounted price and its standard error.
         """
         dt = T / self.n_steps
         paths = self.model.simulate(S0, T, self.n_paths, self.n_steps, rng=self.rng)
         n_paths, _ = paths.shape
-        # initialize cashflows and exercise times at maturity
         cashflow = self.payoff(paths[:, -1])
         tau = np.full(n_paths, self.n_steps, dtype=int)
 
         disc = math.exp(-r * dt)
-        # backward induction
         for t in range(self.n_steps - 1, 0, -1):
             St = paths[:, t]
             immediate = self.payoff(St)
             itm = immediate > 0
             if not np.any(itm):
                 continue
-            # discounted cashflows to time t
             Y = cashflow[itm] * (disc ** (tau[itm] - t))
             X = St[itm]
-            # regress Y against basis [1, X, X^2]
             A = np.vstack([np.ones_like(X), X, X**2]).T
             coeffs, *_ = np.linalg.lstsq(A, Y, rcond=None)
             continuation = coeffs[0] + coeffs[1] * X + coeffs[2] * X**2
@@ -113,7 +105,6 @@ class LongstaffSchwartzPricer:
             cashflow[idx] = immediate[idx]
             tau[idx] = t
 
-        # discount to time zero
         discounts = np.exp(-r * dt * tau)
         discounted = cashflow * discounts
         price = discounted.mean()

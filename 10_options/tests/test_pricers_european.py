@@ -1,8 +1,8 @@
 import pytest
-from option_pricing.models import BSM
-from option_pricing.payoffs import CallPayoff, PutPayoff
-from option_pricing.pricers.european import EuropeanPricer
-from option_pricing.analytics import bsm_price
+from mcdxa.models import BSM
+from mcdxa.payoffs import CallPayoff, PutPayoff
+from mcdxa.pricers.european import EuropeanPricer
+from mcdxa.analytics import bsm_price
 
 
 @pytest.mark.parametrize("opt_type", ["call", "put"])

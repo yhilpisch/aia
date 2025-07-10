@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 
-from option_pricing.models import BSM
-from option_pricing.payoffs import CallPayoff, PutPayoff
-from option_pricing.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
+from mcdxa.models import BSM
+from mcdxa.payoffs import CallPayoff, PutPayoff
+from mcdxa.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
 
 
 @pytest.fixture(autouse=True)
