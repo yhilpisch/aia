@@ -1,0 +1,68 @@
+Separate the valuation function of option_pricing/analytics.py into separate Python modules and manage their import via the analytics.py file afterward.
+
+python option_pricing/analytics.py
+Traceback (most recent call last):
+  File "/Users/yves/Dropbox/Program/cpf/57_ai_assistants/git/10_options/option_pricing/analytics.py", line 1, in <module>
+    from .bsm import norm_cdf, bsm_price
+ImportError: attempted relative import with no known parent package
+
+Now add a simulation function and semi-analytical valuation function according to Lewis (2001), based on the characteristic function, for the Bates (1996) pricing model.
+
+Move the simulation function to the models.py file and put it in the same format (class) as the other simulation models.
+
+python option_pricing/analytics.py
+Traceback (most recent call last):
+  File "/Users/yves/Dropbox/Program/cpf/57_ai_assistants/git/10_options/option_pricing/analytics.py", line 2, in <module>
+    from option_pricing.bsm import norm_cdf, bsm_price
+ModuleNotFoundError: No module named 'option_pricing'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/yves/Dropbox/Program/cpf/57_ai_assistants/git/10_options/option_pricing/analytics.py", line 11, in <module>
+    from bates import bates_price
+  File "/Users/yves/Dropbox/Program/cpf/57_ai_assistants/git/10_options/option_pricing/bates.py", line 4, in <module>
+    from option_pricing.models import Bates
+ModuleNotFoundError: No module named 'option_pricing'
+
+Check why orchestrate.py shows completely wrong MCS values for MJD: Running benchmarks/benchmark_mjd.py...
+
+Type  Case      MC Price      StdErr    Analytic     Abs Err     % Err     Time(s)
+----------------------------------------------------------------------------------
+Call  ITM       0.000000    0.000000   18.704176   18.704176    100.00      0.1205
+Call  ATM       0.000000    0.000000   11.503332   11.503332    100.00      0.1213
+Call  OTM       0.000000    0.000000    5.974967    5.974967    100.00      0.1191
+Put   ITM      95.122942    0.000000   11.097910   84.025033    757.12      0.1182
+Put   ATM      95.122942    0.000000    6.626274   88.496668   1335.54      0.1198
+Put   OTM      95.122942    0.000000    3.827118   91.295824   2385.50      0.1220
+
+Add a benchmark in the same way/format for Bates (1996) to the orchestrate.py file -- via a separate benchmarking file for that model.
+
+Check why the pricing errors/value differences for the Bates model according to orchestrate.py are so large. Maybe reference the semi-analytical models for Merton/Heston for the Lewis implementation. Also check correct parametrization. Type  Case      MC Price      StdErr    Analytic     Abs Err     % Err     Time(s)
+----------------------------------------------------------------------------------
+Call  ITM      18.325602    0.055938   18.843255    0.517654      2.75      0.2796
+Call  ATM      10.782430    0.042944   11.573345    0.790915      6.83      0.2726
+Call  OTM       4.944276    0.028794    6.108145    1.163870     19.05      0.2705
+Put   ITM      10.073529    0.039637   11.231088    1.157559     10.31      0.2739
+Put   ATM       5.912384    0.032768    6.696287    0.783903     11.71      0.2770
+Put   OTM       3.456257    0.026030    3.966198    0.509941     12.86      0.2753
+
+Adjust the orchestrate.py file so that all relevant parameters/arguments for the single benchmark files can be passed to it directly.
+
+Update the test suite to include the added simulation/valuation functions for Bates.
+
+Change the package name to mcdxa.
+
+Update all tests to reflect the new naming/importing: ====================================================================== short test summary info =======================================================================
+ERROR tests/test_bates.py
+ERROR tests/test_models.py
+ERROR tests/test_monte_carlo.py
+ERROR tests/test_payoffs.py
+ERROR tests/test_pricers_american.py
+ERROR tests/test_pricers_european.py
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Interrupted: 6 errors during collection !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+6 errors in 0.18s
+(codex) studio:10_options yves$ python scripts/orchestrate.py
+
+Update all package references in the benchmark files.
+

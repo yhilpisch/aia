@@ -12,10 +12,10 @@ import argparse
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..')))
 import numpy as np
-from option_pricing.models import Bates
-from option_pricing.payoffs import CallPayoff, PutPayoff
-from option_pricing.pricers.european import EuropeanPricer
-from option_pricing.analytics import bates_price
+from mcdxa.models import Bates
+from mcdxa.payoffs import CallPayoff, PutPayoff
+from mcdxa.pricers.european import EuropeanPricer
+from mcdxa.analytics import bates_price
 
 
 def main():

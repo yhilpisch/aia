@@ -13,11 +13,11 @@ import argparse
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
-from option_pricing.models import BSM, MertonJumpDiffusion, Heston
-from option_pricing.payoffs import CallPayoff, PutPayoff
-from option_pricing.pricers.european import EuropeanPricer
-from option_pricing.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
-from option_pricing.analytics import norm_cdf, bsm_price, merton_price, heston_price
+from mcdxa.models import BSM, MertonJumpDiffusion, Heston
+from mcdxa.payoffs import CallPayoff, PutPayoff
+from mcdxa.pricers.european import EuropeanPricer
+from mcdxa.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
+from mcdxa.analytics import norm_cdf, bsm_price, merton_price, heston_price
 
 
 def main():
