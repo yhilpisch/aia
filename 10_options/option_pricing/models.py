@@ -52,77 +52,6 @@ class BSM:
         return paths
 
 
-# This class has been corrected by Gemini with regard to the discretization
-# approach to yield better convergence and valuation results.
-class Heston:
-    """
-    Heston stochastic volatility model.
-
-    dS_t = (r - q) S_t dt + sqrt(v_t) S_t dW1
-    dv_t = kappa*(theta - v_t) dt + xi*sqrt(max(v_t,0)) dW2
-    corr(dW1, dW2) = rho
-
-    Attributes:
-        r (float): Risk-free rate.
-        kappa (float): Mean reversion speed of variance.
-        theta (float): Long-run variance.
-        xi (float): Volatility of variance (vol-of-vol).
-        rho (float): Correlation between asset and variance.
-        v0 (float): Initial variance.
-        q (float): Dividend yield.
-    """
-    def __init__(self,
-                 r: float,
-                 kappa: float,
-                 theta: float,
-                 xi: float,
-                 rho: float,
-                 v0: float,
-                 q: float = 0.0):
-        self.r = r
-        self.kappa = kappa
-        self.theta = theta
-        self.xi = xi
-        self.rho = rho
-        self.v0 = v0
-        self.q = q
-
-    def simulate(self,
-                 S0: float,
-                 T: float,
-                 n_paths: int,
-                 n_steps: int = 50,
-                 rng: np.random.Generator = None) -> np.ndarray:
-        """
-        Simulate asset price under Heston model via Euler full-truncation.
-
-        Returns:
-            np.ndarray: Asset paths shape (n_paths, n_steps+1).
-        """
-        if rng is None:
-            rng = np.random.default_rng()
-
-        dt = T / n_steps
-        S = np.full((n_paths, n_steps + 1), S0, dtype=float)
-        v = np.full(n_paths, self.v0, dtype=float)
-
-        for t in range(1, n_steps + 1):
-            z1 = rng.standard_normal(n_paths)
-            z2 = rng.standard_normal(n_paths)
-            w1 = z1
-            w2 = self.rho * z1 + math.sqrt(1 - self.rho ** 2) * z2
-
-            v_pos = np.maximum(v, 0)
-
-            S[:, t] = (
-                S[:, t - 1]
-                * np.exp((self.r - self.q - 0.5 * v_pos) * dt + np.sqrt(v_pos * dt) * w1)
-            )
-
-            v = v + self.kappa * (self.theta - v) * dt + self.xi * np.sqrt(v_pos * dt) * w2
-        return S
-
-
 class MertonJumpDiffusion:
     """
     Merton jump-diffusion model for risk-neutral asset price simulation.
@@ -202,3 +131,153 @@ class MertonJumpDiffusion:
                 * np.exp(drift + diff_coeff * z + jump_log)
             )
         return paths
+
+
+# This class has been corrected by Gemini with regard to the discretization
+# approach to yield better convergence and valuation results.
+class Heston:
+    """
+    Heston stochastic volatility model.
+
+    dS_t = (r - q) S_t dt + sqrt(v_t) S_t dW1
+    dv_t = kappa*(theta - v_t) dt + xi*sqrt(max(v_t,0)) dW2
+    corr(dW1, dW2) = rho
+
+    Attributes:
+        r (float): Risk-free rate.
+        kappa (float): Mean reversion speed of variance.
+        theta (float): Long-run variance.
+        xi (float): Volatility of variance (vol-of-vol).
+        rho (float): Correlation between asset and variance.
+        v0 (float): Initial variance.
+        q (float): Dividend yield.
+    """
+    def __init__(self,
+                 r: float,
+                 kappa: float,
+                 theta: float,
+                 xi: float,
+                 rho: float,
+                 v0: float,
+                 q: float = 0.0):
+        self.r = r
+        self.kappa = kappa
+        self.theta = theta
+        self.xi = xi
+        self.rho = rho
+        self.v0 = v0
+        self.q = q
+
+    def simulate(self,
+                 S0: float,
+                 T: float,
+                 n_paths: int,
+                 n_steps: int = 50,
+                 rng: np.random.Generator = None) -> np.ndarray:
+        """
+        Simulate asset price under Heston model via Euler full-truncation.
+
+        Returns:
+            np.ndarray: Asset paths shape (n_paths, n_steps+1).
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        dt = T / n_steps
+        S = np.full((n_paths, n_steps + 1), S0, dtype=float)
+        v = np.full(n_paths, self.v0, dtype=float)
+
+        for t in range(1, n_steps + 1):
+            z1 = rng.standard_normal(n_paths)
+            z2 = rng.standard_normal(n_paths)
+            w1 = z1
+            w2 = self.rho * z1 + math.sqrt(1 - self.rho ** 2) * z2
+
+            v_pos = np.maximum(v, 0)
+
+            S[:, t] = (
+                S[:, t - 1]
+                * np.exp((self.r - self.q - 0.5 * v_pos) * dt + np.sqrt(v_pos * dt) * w1)
+            )
+
+            v = v + self.kappa * (self.theta - v) * dt + self.xi * np.sqrt(v_pos * dt) * w2
+        return S
+
+
+class Bates:
+    """
+    Bates (1996) jump-diffusion with stochastic volatility (Heston + Merton jumps).
+
+    Simulates dS_t and v_t dynamics with correlated diffusion and Poisson jumps.
+    """
+    def __init__(self,
+                 r: float,
+                 kappa: float,
+                 theta: float,
+                 xi: float,
+                 rho: float,
+                 v0: float,
+                 lam: float,
+                 mu_j: float,
+                 sigma_j: float,
+                 q: float = 0.0):
+        self.r = r
+        self.kappa = kappa
+        self.theta = theta
+        self.xi = xi
+        self.rho = rho
+        self.v0 = v0
+        self.lam = lam
+        self.mu_j = mu_j
+        self.sigma_j = sigma_j
+        self.q = q
+        # jump compensator E[Y - 1]
+        self.kappa_j = math.exp(mu_j + 0.5 * sigma_j ** 2) - 1
+
+    def simulate(self,
+                 S0: float,
+                 T: float,
+                 n_paths: int,
+                 n_steps: int = 50,
+                 rng: np.random.Generator = None) -> np.ndarray:
+        """
+        Simulate asset paths for the Bates model via Euler full-truncation plus jumps.
+
+        Returns:
+            np.ndarray: Simulated paths (n_paths, n_steps+1).
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        dt = T / n_steps
+        S = np.full((n_paths, n_steps + 1), S0, dtype=float)
+        v = np.full(n_paths, self.v0, dtype=float)
+
+        for t in range(1, n_steps + 1):
+            z1 = rng.standard_normal(n_paths)
+            z2 = rng.standard_normal(n_paths)
+            w1 = z1
+            w2 = self.rho * z1 + math.sqrt(1 - self.rho ** 2) * z2
+
+            v_pos = np.maximum(v, 0.0)
+
+            S[:, t] = (
+                S[:, t - 1]
+                * np.exp((self.r - self.q - self.lam * self.kappa_j - 0.5 * v_pos) * dt
+                         + np.sqrt(v_pos * dt) * w1)
+            )
+            v = (
+                v
+                + self.kappa * (self.theta - v) * dt
+                + self.xi * np.sqrt(v_pos * dt) * w2
+            )
+
+            Nj = rng.poisson(self.lam * dt, size=n_paths)
+            jump_log = np.where(
+                Nj > 0,
+                rng.normal(Nj * self.mu_j, np.sqrt(Nj) * self.sigma_j),
+                0.0,
+            )
+            S[:, t] *= np.exp(jump_log)
+
+        return S
