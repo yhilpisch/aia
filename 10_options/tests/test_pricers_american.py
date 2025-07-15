@@ -4,6 +4,7 @@ import numpy as np
 from mcdxa.models import BSM
 from mcdxa.payoffs import CallPayoff, PutPayoff
 from mcdxa.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
+from mcdxa.payoffs import CustomPayoff
 
 
 @pytest.fixture(autouse=True)
@@ -22,12 +23,36 @@ def test_crr_binomial_call_no_dividend_intrinsic():
     assert price == pytest.approx(S0 - K)
 
 
+def test_crr_binomial_custom_call_intrinsic():
+    """Ensure CustomPayoff works with AmericanBinomialPricer for intrinsic call payoff."""
+    model = BSM(r=0.05, sigma=0.0, q=0.0)
+    K, S0, T = 100.0, 110.0, 1.0
+    payoff = CustomPayoff(lambda s: np.maximum(s - K, 0))
+    pricer = AmericanBinomialPricer(model, payoff, n_steps=10)
+    price = pricer.price(S0, T, r=0.05)
+    assert price == pytest.approx(S0 - K)
+
+
 def test_lsm_put_no_volatility_exercise():
     model = BSM(r=0.0, sigma=0.0, q=0.0)
     K, S0, T = 100.0, 90.0, 1.0
     payoff = PutPayoff(K)
     pricer = LongstaffSchwartzPricer(
         model, payoff, n_paths=50, n_steps=5, seed=42)
+    price, stderr = pricer.price(S0, T, r=0.0)
+    # Zero vol: always exercise immediately, price equals intrinsic
+    assert stderr == pytest.approx(0.0)
+    assert price == pytest.approx(K - S0)
+
+
+def test_lsm_custom_put_no_volatility_exercise():
+    """Ensure CustomPayoff works with LongstaffSchwartzPricer for intrinsic put payoff."""
+    model = BSM(r=0.0, sigma=0.0, q=0.0)
+    K, S0, T = 100.0, 90.0, 1.0
+    payoff = CustomPayoff(lambda s: np.maximum(K - s, 0))
+    pricer = LongstaffSchwartzPricer(
+        model, payoff, n_paths=50, n_steps=5, seed=42
+    )
     price, stderr = pricer.price(S0, T, r=0.0)
     # Zero vol: always exercise immediately, price equals intrinsic
     assert stderr == pytest.approx(0.0)

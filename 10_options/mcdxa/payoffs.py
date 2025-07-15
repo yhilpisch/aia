@@ -7,6 +7,32 @@ class Payoff:
         raise NotImplementedError
 
 
+class CustomPayoff(Payoff):
+    """
+    Custom payoff defined by an arbitrary function of the terminal asset price.
+
+    Args:
+        func (callable): Function mapping terminal price array (n_paths,)
+            or scalar to payoff values. The function should accept a numpy
+            array or scalar and return an array or scalar of payoffs.
+
+    Example:
+        # payoff = max(sqrt(S_T) - K, 0)
+        payoff = CustomPayoff(lambda s: np.maximum(np.sqrt(s) - K, 0))
+    """
+    def __init__(self, func):
+        if not callable(func):
+            raise TypeError(f"func must be callable, got {type(func)}")
+        self.func = func
+
+    def __call__(self, S: np.ndarray) -> np.ndarray:
+        S = np.asarray(S)
+        # extract terminal price if full path provided
+        S_end = S[:, -1] if S.ndim == 2 else S
+        # apply custom function to terminal prices
+        return np.asarray(self.func(S_end))
+
+
 class CallPayoff(Payoff):
     """European call option payoff."""
     def __init__(self, strike: float):
