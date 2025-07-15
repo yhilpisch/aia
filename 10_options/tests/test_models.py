@@ -2,7 +2,7 @@ import numpy as np
 import math
 import pytest
 
-from mcdxa.models import BSM, Heston, MertonJumpDiffusion
+from mcdxa.models import BSM, Heston, Merton
 
 
 def test_bsm_deterministic_growth():
@@ -24,7 +24,7 @@ def test_heston_nonnegative_and_shape():
 
 def test_mjd_jump_effect():
     # With high jump intensity and zero diffusion, expect jumps
-    model = MertonJumpDiffusion(r=0.0, sigma=0.0, lam=10.0, mu_j=0.0, sigma_j=0.0, q=0.0)
+    model = Merton(r=0.0, sigma=0.0, lam=10.0, mu_j=0.0, sigma_j=0.0, q=0.0)
     paths = model.simulate(S0=1.0, T=1.0, n_paths=1000, n_steps=1)
     # With zero jump size variance and mu_j=0, jumps yield Y=1, so S should equal S0
     assert paths.shape == (1000, 2)

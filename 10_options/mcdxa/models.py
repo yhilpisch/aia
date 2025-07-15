@@ -52,7 +52,7 @@ class BSM:
         return paths
 
 
-class MertonJumpDiffusion:
+class Merton:
     """
     Merton jump-diffusion model for risk-neutral asset price simulation.
 

@@ -12,7 +12,7 @@ import argparse
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..')))
 import numpy as np
-from mcdxa.models import MertonJumpDiffusion
+from mcdxa.models import Merton
 from mcdxa.payoffs import CallPayoff, PutPayoff
 from mcdxa.pricers.european import EuropeanPricer
 from mcdxa.analytics import merton_price
@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--q", type=float, default=0.0, help="Dividend yield")
     args = parser.parse_args()
 
-    model = MertonJumpDiffusion(
+    model = Merton(
         args.r, args.sigma, args.lam, args.mu_j, args.sigma_j, q=args.q
     )
     moneyness = 0.10

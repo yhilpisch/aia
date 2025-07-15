@@ -13,7 +13,7 @@ import argparse
 
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
-from mcdxa.models import BSM, MertonJumpDiffusion, Heston
+from mcdxa.models import BSM, Merton, Heston
 from mcdxa.payoffs import CallPayoff, PutPayoff
 from mcdxa.pricers.european import EuropeanPricer
 from mcdxa.pricers.american import AmericanBinomialPricer, LongstaffSchwartzPricer
@@ -81,7 +81,7 @@ def main():
 
     model = BSM(args.r, args.sigma, q=args.q)
     # jump-diffusion model for Merton series benchmark
-    model_mjd = MertonJumpDiffusion(
+    model_mjd = Merton(
         args.r, args.sigma, args.lam, args.mu_j, args.sigma_j, q=args.q
     )
     # Define scenarios: ATM, ITM and OTM with a fixed moneyness percentage
