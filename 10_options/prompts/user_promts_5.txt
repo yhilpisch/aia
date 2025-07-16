@@ -1,0 +1,12 @@
+Add to the mcdxa package functionality for custom payoffs in the form, for example, of max(S ** 0.5 - K, 0) or max(K - S ** 0.5, 0).
+
+Can this new custom payoff be used for both European and American options? If so, add appropriate tests. Also add a test for "plain vanilla custom payoffs" and compare the resulting MCS values to the BSM ones (within a broader range).
+
+Create scripts/mcdxa.ipynb and use this notebook to show in detail how to use the mcdxa package based on a comprehensive set of examples. Also include visualizations where appropriate.
+
+In the notebook, there are multiple line breaks missing. Every line must end with "\n".
+
+To keep the package consistent, change the model name "MertonJumpDiffusion" to just "Merton".
+
+Generate a README.md that provides a detailed overview and explanation of the mcdxa package. Include our logo (to be found at https://hilpisch.com/tpq_logo.png). Also include our company The Python Quants GmbH and a copyright.
+
