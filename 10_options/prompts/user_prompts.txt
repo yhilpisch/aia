@@ -1,0 +1,2 @@
+Change the mcdxa package repo/folder so that it becomes easily installable via pip (pip install git+https://github.com/yhilpisch/mcdxa.git).
+

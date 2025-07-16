@@ -10,3 +10,7 @@ To keep the package consistent, change the model name "MertonJumpDiffusion" to j
 
 Generate a README.md that provides a detailed overview and explanation of the mcdxa package. Include our logo (to be found at https://hilpisch.com/tpq_logo.png). Also include our company The Python Quants GmbH and a copyright.
 
+***
+
+Change the mcdxa package repo/folder so that it becomes easily installable via pip (pip install git+https://github.com/yhilpisch/mcdxa.git).
+
