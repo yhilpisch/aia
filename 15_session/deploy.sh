@@ -14,11 +14,15 @@ SERVER_IP=$1
 SSH_DEST=root@${SERVER_IP}
 APP_DIR=/opt/bootcamp
 SERVICE_NAME=bootcamp
+DOMAIN=genai.tpq.io       # subdomain for SSL
+EMAIL=admin@tpq.io        # email for Let's Encrypt notifications
 
 echo "=== Installing system packages on ${SERVER_IP} ==="
 ssh ${SSH_DEST} << 'INSTALL_PACKAGES'
 apt update
-apt install -y python3 python3-venv python3-pip nginx
+# optional:
+# apt upgrade
+apt install -y python3 python3-venv python3-pip nginx certbot python3-certbot-nginx
 INSTALL_PACKAGES
 
 echo "=== Syncing application files to ${SSH_DEST}:${APP_DIR} ==="
@@ -37,7 +41,7 @@ pip install -r requirements.txt gunicorn
 deactivate
 
 # systemd service for Gunicorn
-cat > /etc/systemd/system/${SERVICE_NAME}.service << 'SERVICE_EOF'
+cat > /etc/systemd/system/${SERVICE_NAME}.service << SERVICE_EOF
 [Unit]
 Description=Gunicorn instance to serve Algorithmic Trading Bootcamp
 After=network.target
@@ -47,21 +51,27 @@ User=www-data
 Group=www-data
 WorkingDirectory=${APP_DIR}
 Environment="PATH=${APP_DIR}/venv/bin"
-ExecStart=${APP_DIR}/venv/bin/gunicorn --workers 3 --bind unix:${APP_DIR}/${SERVICE_NAME}.sock app:app
+# start Gunicorn, creating socket with group write via its --umask flag
+ExecStart=${APP_DIR}/venv/bin/gunicorn --workers 3 \
+           --bind unix:${APP_DIR}/${SERVICE_NAME}.sock \
+           --umask 007 app:app
 
 [Install]
 WantedBy=multi-user.target
 SERVICE_EOF
 
+# reload systemd, enable the service, and ensure correct ownership for socket dir
 systemctl daemon-reload
 systemctl enable ${SERVICE_NAME}.service
+chown -R www-data:www-data ${APP_DIR}
+# restart Gunicorn so it can bind its socket under correct permissions
 systemctl restart ${SERVICE_NAME}.service
 
 # nginx site configuration
 cat > /etc/nginx/sites-available/${SERVICE_NAME} << 'NGINX_EOF'
 server {
     listen 80;
-    server_name _;
+    server_name ${DOMAIN};
     root ${APP_DIR};
 
     location / {
@@ -81,6 +91,10 @@ ln -sf /etc/nginx/sites-available/${SERVICE_NAME} /etc/nginx/sites-enabled/${SER
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl restart nginx
+
+    # Obtain/renew SSL certificate via Let's Encrypt
+    certbot --nginx --noninteractive --agree-tos --email ${EMAIL} \
+      -d ${DOMAIN} --redirect
 
 # ensure proper file ownership
 chown -R www-data:www-data ${APP_DIR}
