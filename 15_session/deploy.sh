@@ -22,10 +22,10 @@ apt install -y python3 python3-venv python3-pip nginx
 INSTALL_PACKAGES
 
 echo "=== Syncing application files to ${SSH_DEST}:${APP_DIR} ==="
-rsync -avz --exclude '__pycache__' --exclude '.git' ./ ${SSH_DEST}:${APP_DIR}/
+rsync -avz --exclude '__pycache__' --exclude '.git' --exclude '.ipynb_checkpoints/' ./ ${SSH_DEST}:${APP_DIR}/
 
 echo "=== Configuring application on remote host ==="
-ssh ${SSH_DEST} << 'REMOTE_SETUP'
+ssh ${SSH_DEST} << REMOTE_SETUP
 set -euo pipefail
 cd ${APP_DIR}
 
@@ -66,14 +66,14 @@ server {
 
     location / {
         proxy_pass http://unix:${APP_DIR}/${SERVICE_NAME}.sock;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    location /tpq_logo_bic.png { try_files $uri =404; }
-    location /genai_bootcamp.png { try_files $uri =404; }
+    location /tpq_logo_bic.png { try_files \$uri =404; }
+    location /genai_bootcamp.png { try_files \$uri =404; }
 }
 NGINX_EOF
 
